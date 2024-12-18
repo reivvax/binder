@@ -73,8 +73,22 @@ namespace cxx {
 
         constexpr void remove(K const& k);
 
-        constexpr V& read(K const& k);
-        constexpr V const& read(K const& k) const;
+        constexpr V& read(K const& k) { // except
+            ensure_unique();
+            auto it = data_ptr->iters.find(k);
+            if (it == data_ptr->iters.end()) {
+                throw std::invalid_argument("Key does not exist");
+            }
+            return *(it->second);
+        }
+
+        constexpr V const& read(K const& k) const {
+            auto it = data_ptr->iters.find(k);
+            if (it == data_ptr->iters.end()) {
+                throw std::invalid_argument("Key does not exist");
+            }
+            return *(it->second);
+        }
 
         constexpr size_t size() const noexcept {
             return data_ptr->data.size(); // noexcept

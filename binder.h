@@ -3,43 +3,100 @@
 
 #include <list>
 #include <map>
+#include <memory>
 
 namespace cxx {
     template <typename K, typename V>
     class binder {
-        std::list<V> data;
-        std::map<K, typename std::list<V>::iterator> iters;
+        struct Data {
+            std::list<V> data;
+            std::map<K, typename std::list<V>::iterator> iters;
+        };
+
+        std::shared_ptr<Data> data_ptr;
+        
+        void ensure_unique() { // except
+            if (!data_ptr.unique()) {
+                data_ptr = std::make_shared<Data>(*data_ptr);
+            }
+        }
 
     public:
-        constexpr binder() = default;
+        binder() : data_ptr(std::make_shared<Data>()) {} // except
+
+        // co jeżeli typy się nie zgadzają
+        template <typename T, typename U>
+        binder(const binder<T, U>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
 
         template <typename T, typename U>
-        constexpr binder(const binder<T, U>& rhs);
-
-        template <typename T, typename U>
-        constexpr binder(binder<T, U>&& rhs);
-
+        binder(binder<T, U>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
+            rhs.data_ptr = nullptr;
+        }
 
         constexpr binder& operator=(binder rhs);
 
-        constexpr void insert_front(K const& k, V const& v);
+        void insert_front(K const& k, V const& v) { // except
+            ensure_unique();
+            
+            if (data_ptr->iters.find(k) != data_ptr->iters.end()) {
+                throw std::invalid_argument("Key already exists");
+            }
+
+            std::list<V> temp_list = data_ptr->data;
+            auto temp_iters = data_ptr->iters;
+
+            temp_list.push_front(v);
+            temp_iters[k] = temp_list.begin();
+
+            std::swap(data_ptr->data, temp_list);
+            std::swap(data_ptr->iters, temp_iters);
+        }
 
         constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
 
-        constexpr void remove();
+        void remove() { // except
+            ensure_unique();
+
+            if (size() == 0) {
+                throw std::invalid_argument("Binder is empty");
+            }
+
+            std::list<V> temp_list = data_ptr->data;
+            auto temp_iters = data_ptr->iters;
+
+            temp_list.pop_front();
+            temp_iters.erase(temp_iters.begin());
+
+            std::swap(data_ptr->data, temp_list);
+            std::swap(data_ptr->iters, temp_iters);
+        }
 
         constexpr void remove(K const& k);
 
-        constexpr V& read(K const& k);
-        constexpr V const& read(K const& k) const;
+        constexpr V& read(K const& k) { // except
+            ensure_unique();
+            auto it = data_ptr->iters.find(k);
+            if (it == data_ptr->iters.end()) {
+                throw std::invalid_argument("Key does not exist");
+            }
+            return *(it->second);
+        }
+
+        constexpr V const& read(K const& k) const {
+            auto it = data_ptr->iters.find(k);
+            if (it == data_ptr->iters.end()) {
+                throw std::invalid_argument("Key does not exist");
+            }
+            return *(it->second);
+        }
 
         constexpr size_t size() const noexcept {
-            return data.size(); // noexcept
+            return data_ptr->data.size(); // noexcept
         }
 
         constexpr void clear() noexcept {
-            data.clear();
-            iters.clear();
+            data_ptr->data.clear();
+            data_ptr->iters.clear();
         }
 
 
@@ -75,8 +132,8 @@ namespace cxx {
             }
         };
 
-        const_iterator cbegin() const noexcept { return const_iterator(data.cbegin()); }
-        const_iterator cend() const noexcept { return const_iterator(data.cend()); }
+        const_iterator cbegin() const noexcept { return const_iterator(data_ptr->data.cbegin()); }
+        const_iterator cend() const noexcept { return const_iterator(data_ptr->data.cend()); }
 
 
 

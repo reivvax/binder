@@ -54,7 +54,22 @@ namespace cxx {
 
         constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
 
-        constexpr void remove();
+        void remove() { // except
+            ensure_unique();
+
+            if (size() == 0) {
+                throw std::invalid_argument("Binder is empty");
+            }
+
+            std::list<V> temp_list = data_ptr->data;
+            auto temp_iters = data_ptr->iters;
+
+            temp_list.pop_front();
+            temp_iters.erase(temp_iters.begin());
+
+            std::swap(data_ptr->data, temp_list);
+            std::swap(data_ptr->iters, temp_iters);
+        }
 
         constexpr void remove(K const& k);
 

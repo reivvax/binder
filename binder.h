@@ -3,22 +3,28 @@
 
 #include <list>
 #include <map>
+#include <memory>
 
 namespace cxx {
     template <typename K, typename V>
     class binder {
-        std::list<V> data;
-        std::map<K, typename std::list<V>::iterator> iters;
+        struct Data {
+            std::list<V> data;
+            std::map<K, typename std::list<V>::iterator> iters;
+        };
+
+        std::shared_ptr<Data> data_ptr;
 
     public:
-        constexpr binder() = default;
+        binder() : data_ptr(std::make_shared<Data>()) {} // except
 
         template <typename T, typename U>
-        constexpr binder(const binder<T, U>& rhs);
+        binder(const binder<T, U>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
 
         template <typename T, typename U>
-        constexpr binder(binder<T, U>&& rhs);
-
+        binder(binder<T, U>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
+            rhs.data_ptr = nullptr;
+        }
 
         constexpr binder& operator=(binder rhs);
 
@@ -34,12 +40,12 @@ namespace cxx {
         constexpr V const& read(K const& k) const;
 
         constexpr size_t size() const noexcept {
-            return data.size(); // noexcept
+            return data_ptr->data.size(); // noexcept
         }
 
         constexpr void clear() noexcept {
-            data.clear();
-            iters.clear();
+            data_ptr->data.clear();
+            data_ptr->iters.clear();
         }
 
 
@@ -75,8 +81,8 @@ namespace cxx {
             }
         };
 
-        const_iterator cbegin() const noexcept { return const_iterator(data.cbegin()); }
-        const_iterator cend() const noexcept { return const_iterator(data.cend()); }
+        const_iterator cbegin() const noexcept { return const_iterator(data_ptr->data.cbegin()); }
+        const_iterator cend() const noexcept { return const_iterator(data_ptr->data.cend()); }
 
 
 

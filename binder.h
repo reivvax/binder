@@ -14,10 +14,17 @@ namespace cxx {
         };
 
         std::shared_ptr<Data> data_ptr;
+        
+        void ensure_unique() { // except
+            if (!data_ptr.unique()) {
+                data_ptr = std::make_shared<Data>(*data_ptr);
+            }
+        }
 
     public:
         binder() : data_ptr(std::make_shared<Data>()) {} // except
 
+        // co jeżeli typy się nie zgadzają
         template <typename T, typename U>
         binder(const binder<T, U>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
 
@@ -28,7 +35,22 @@ namespace cxx {
 
         constexpr binder& operator=(binder rhs);
 
-        constexpr void insert_front(K const& k, V const& v);
+        void insert_front(K const& k, V const& v) { // except
+            ensure_unique();
+            
+            if (data_ptr->iters.find(k) != data_ptr->iters.end()) {
+                throw std::invalid_argument("Key already exists");
+            }
+
+            std::list<V> temp_list = data_ptr->data;
+            auto temp_iters = data_ptr->iters;
+
+            temp_list.push_front(v);
+            temp_iters[k] = temp_list.begin();
+
+            std::swap(data_ptr->data, temp_list);
+            std::swap(data_ptr->iters, temp_iters);
+        }
 
         constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
 

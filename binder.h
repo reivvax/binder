@@ -9,15 +9,16 @@ namespace cxx {
     template <typename K, typename V>
     class binder {
         struct Data {
-            std::list<V> data;
-            std::map<K, typename std::list<V>::iterator> iters;
+            std::list<std::pair<K, V>> data;
+            std::map<K, typename std::list<std::pair<K, V>>::iterator> iters;
         };
 
         std::shared_ptr<Data> data_ptr;
         
-        void ensure_unique() { // except
+        // TODO: zaimplementować przewartościowanie iteratorów w iters
+        void ensure_unique() {
             if (!data_ptr.unique()) {
-                data_ptr = std::make_shared<Data>(*data_ptr);
+                std::shared_ptr<Data> new_data_ptr = std::make_shared<Data>(*data_ptr);
             }
         }
 
@@ -42,10 +43,10 @@ namespace cxx {
                 throw std::invalid_argument("Key already exists");
             }
 
-            std::list<V> temp_list = data_ptr->data;
+            auto temp_list = data_ptr->data;
             auto temp_iters = data_ptr->iters;
 
-            temp_list.push_front(v);
+            temp_list.push_front({k, v});
             temp_iters[k] = temp_list.begin();
 
             std::swap(data_ptr->data, temp_list);
@@ -61,7 +62,7 @@ namespace cxx {
                 throw std::invalid_argument("Binder is empty");
             }
 
-            std::list<V> temp_list = data_ptr->data;
+            auto temp_list = data_ptr->data;
             auto temp_iters = data_ptr->iters;
 
             temp_list.pop_front();
@@ -79,7 +80,7 @@ namespace cxx {
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
             }
-            return *(it->second);
+            return it->second->second;
         }
 
         constexpr V const& read(K const& k) const {
@@ -87,7 +88,7 @@ namespace cxx {
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
             }
-            return *(it->second);
+            return it->second->second;
         }
 
         constexpr size_t size() const noexcept {

@@ -32,16 +32,14 @@ namespace cxx {
     public:
         binder() : data_ptr(std::make_shared<Data>()) {} // except
 
-        // co jeżeli typy się nie zgadzają
-        template <typename T, typename U>
-        binder(const binder<T, U>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
+        // TODO jeżeli się typy nie zgadzają, to chyba nie musi się kompilować
+        binder(const binder<K, V>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
 
-        template <typename T, typename U>
-        binder(binder<T, U>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
+        binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
             rhs.data_ptr = nullptr;
         }
 
-        // tymczasowo skomentowano
+        // TODO tymczasowo skomentowano
         // constexpr binder& operator=(binder rhs);
 
         void insert_front(K const& k, V const& v) {
@@ -51,8 +49,15 @@ namespace cxx {
                 throw std::invalid_argument("Key already exists");
             }
 
-            data_ptr->data.push_front({k, v});
-            data_ptr->iters[k] = data_ptr->data.begin();
+            data_ptr->data.push_front({k, v}); // strong gurantee
+
+            try {
+                auto it = data_ptr->data.begin(); // no-throw gurantee
+                data_ptr->iters[k] = it; // strong_gurantee
+            } catch (...) {
+                data_ptr->data.pop_front(); // no-throw gurantee
+                throw;
+            }
         }
 
         constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
@@ -65,10 +70,9 @@ namespace cxx {
             }
 
             K k = data_ptr->data.front().first;
-            auto it = data_ptr->iters.find(k);
-
-            data_ptr->iters.erase(it);
-            data_ptr->data.pop_front();
+            data_ptr->data.pop_front(); // no-throw gurantee
+            auto it = data_ptr->iters.find(k); // strong gurantee
+            data_ptr->iters.erase(it); // no-throw gurantee / strong gurantee
         }
 
         constexpr void remove(K const& k);

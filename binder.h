@@ -15,10 +15,17 @@ namespace cxx {
 
         std::shared_ptr<Data> data_ptr;
         
-        // TODO: zaimplementować przewartościowanie iteratorów w iters
         void ensure_unique() {
             if (!data_ptr.unique()) {
-                std::shared_ptr<Data> new_data_ptr = std::make_shared<Data>(*data_ptr);
+                std::shared_ptr<Data> new_data_ptr = std::make_shared<Data>();
+
+                for (const auto& item : data_ptr->data) {
+                    new_data_ptr->data.push_back({item.first, item.second});
+                    auto it = std::prev(new_data_ptr->data.end());
+                    new_data_ptr->iters[item.first] = it;
+                }
+
+                data_ptr = new_data_ptr;
             }
         }
 
@@ -34,23 +41,18 @@ namespace cxx {
             rhs.data_ptr = nullptr;
         }
 
-        constexpr binder& operator=(binder rhs);
+        // tymczasowo skomentowano
+        // constexpr binder& operator=(binder rhs);
 
-        void insert_front(K const& k, V const& v) { // except
+        void insert_front(K const& k, V const& v) {
             ensure_unique();
             
             if (data_ptr->iters.find(k) != data_ptr->iters.end()) {
                 throw std::invalid_argument("Key already exists");
             }
 
-            auto temp_list = data_ptr->data;
-            auto temp_iters = data_ptr->iters;
-
-            temp_list.push_front({k, v});
-            temp_iters[k] = temp_list.begin();
-
-            std::swap(data_ptr->data, temp_list);
-            std::swap(data_ptr->iters, temp_iters);
+            data_ptr->data.push_front({k, v});
+            data_ptr->iters[k] = data_ptr->data.begin();
         }
 
         constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
@@ -62,14 +64,11 @@ namespace cxx {
                 throw std::invalid_argument("Binder is empty");
             }
 
-            auto temp_list = data_ptr->data;
-            auto temp_iters = data_ptr->iters;
+            K k = data_ptr->data.front().first;
+            auto it = data_ptr->iters.find(k);
 
-            temp_list.pop_front();
-            temp_iters.erase(temp_iters.begin());
-
-            std::swap(data_ptr->data, temp_list);
-            std::swap(data_ptr->iters, temp_iters);
+            data_ptr->iters.erase(it);
+            data_ptr->data.pop_front();
         }
 
         constexpr void remove(K const& k);

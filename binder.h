@@ -32,16 +32,14 @@ namespace cxx {
     public:
         binder() : data_ptr(std::make_shared<Data>()) {} // except
 
-        // co jeżeli typy się nie zgadzają
-        template <typename T, typename U>
-        binder(const binder<T, U>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
+        // TODO jeżeli się typy nie zgadzają, to chyba nie musi się kompilować
+        binder(const binder<K, V>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
 
-        template <typename T, typename U>
-        binder(binder<T, U>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
+        binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
             rhs.data_ptr = nullptr;
         }
 
-        // tymczasowo skomentowano
+        // TODO tymczasowo skomentowano
         // constexpr binder& operator=(binder rhs);
 
         void insert_front(K const& k, V const& v) {

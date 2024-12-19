@@ -51,8 +51,15 @@ namespace cxx {
                 throw std::invalid_argument("Key already exists");
             }
 
-            data_ptr->data.push_front({k, v});
-            data_ptr->iters[k] = data_ptr->data.begin();
+            data_ptr->data.push_front({k, v}); // strong gurantee
+
+            try {
+                auto it = data_ptr->data.begin(); // no-throw gurantee
+                data_ptr->iters[k] = it; // strong_gurantee
+            } catch (...) {
+                data_ptr->data.pop_front(); // no-throw gurantee
+                throw;
+            }
         }
 
         constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
@@ -65,10 +72,9 @@ namespace cxx {
             }
 
             K k = data_ptr->data.front().first;
-            auto it = data_ptr->iters.find(k);
-
-            data_ptr->iters.erase(it);
-            data_ptr->data.pop_front();
+            data_ptr->data.pop_front(); // no-throw gurantee
+            auto it = data_ptr->iters.find(k); // strong gurantee
+            data_ptr->iters.erase(it); // no-throw gurantee / strong gurantee
         }
 
         constexpr void remove(K const& k);

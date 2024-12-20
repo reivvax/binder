@@ -78,14 +78,14 @@ namespace cxx {
 
             ensure_unique();
             
-            position++; // iterator points to the element after the new element
+            position++; // iterator points to the element after prev_k
             data_ptr->data.insert(position, {k, v}); // strong guarantee
             position--; // iterator points to inserted element
             
             try {
                 data_ptr->iters[k] = position; // strong guarantee
             } catch (...) {
-                data_ptr->data.erase(position);
+                data_ptr->data.erase(position); // no-throw
                 throw;
             }
         }
@@ -103,7 +103,18 @@ namespace cxx {
             data_ptr->iters.erase(it); // no-throw gurantee / strong gurantee
         }
 
-        constexpr void remove(K const& k);
+        constexpr void remove(K const& k) {
+            auto position = data_ptr->iters.find(k);
+
+            if (k == data_ptr->iter.end()) {
+                throw std::invalid_argument("Binder does not contain specified key");
+            }
+
+            ensure_unique();
+
+            data_ptr->iters.erase(k);            
+            data_ptr->data.erase(position); // no-throw
+        }
 
         constexpr V& read(K const& k) { // except
             ensure_unique();

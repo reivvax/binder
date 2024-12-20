@@ -44,10 +44,9 @@ namespace cxx {
             rhs.data_ptr = nullptr;
         }
 
-        // TODO tymczasowo skomentowano
         template <typename K2, typename V2>
         requires detail::convertible_binder<K, V, K2, V2>
-        constexpr binder& operator=(binder<K2, V2> rhs) {
+        binder& operator=(binder<K2, V2> rhs) {
             data_ptr = rhs.data_ptr;
         }
 
@@ -69,7 +68,27 @@ namespace cxx {
             }
         }
 
-        constexpr void insert_afer(K const& prev_k, K const& k, V const& v);
+        void insert_afer(K const& prev_k, K const& k, V const& v) {
+            auto position = data_ptr->iters.find(prev_k);
+
+            if (data_ptr->iters.find(k) != data_ptr->iters.end() 
+                || position == data_ptr->iters.end()) {
+                    throw std::invalid_argument("Key already exists");
+            }
+
+            ensure_unique();
+            
+            position++; // iterator points to the element after the new element
+            data_ptr->data.insert(position, {k, v}); // strong guarantee
+            position--; // iterator points to inserted element
+            
+            try {
+                data_ptr->iters[k] = position; // strong guarantee
+            } catch (...) {
+                data_ptr->data.erase(position);
+                throw;
+            }
+        }
 
         void remove() { // except
             ensure_unique();

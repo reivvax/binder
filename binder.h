@@ -47,7 +47,7 @@ namespace cxx {
         template <typename K2, typename V2>
         requires detail::convertible_binder<K, V, K2, V2>
         binder& operator=(binder<K2, V2> rhs) {
-            data_ptr = rhs.data_ptr;
+            data_ptr = std::move(rhs.data_ptr);
         }
 
         void insert_front(K const& k, V const& v) { // except

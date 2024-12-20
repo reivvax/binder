@@ -5,6 +5,11 @@
 #include <map>
 #include <memory>
 
+namespace detail {
+    template<typename K, typename V, typename K2, typename V2>
+    concept convertible_binder = std::convertible_to<K2, K> && std::convertible_to<V2, V>;
+}
+
 namespace cxx {
     template <typename K, typename V>
     class binder {
@@ -40,7 +45,11 @@ namespace cxx {
         }
 
         // TODO tymczasowo skomentowano
-        // constexpr binder& operator=(binder rhs);
+        template <typename K2, typename V2>
+        requires detail::convertible_binder<K, V, K2, V2>
+        constexpr binder& operator=(binder<K2, V2> rhs) {
+            data_ptr = rhs.data_ptr;
+        }
 
         void insert_front(K const& k, V const& v) {
             ensure_unique();

@@ -50,12 +50,12 @@ namespace cxx {
             data_ptr = rhs.data_ptr;
         }
 
-        void insert_front(K const& k, V const& v) {
-            ensure_unique();
-            
+        void insert_front(K const& k, V const& v) { // except
             if (data_ptr->iters.find(k) != data_ptr->iters.end()) {
                 throw std::invalid_argument("Key already exists");
             }
+
+            ensure_unique();
 
             data_ptr->data.push_front({k, v}); // strong gurantee
 
@@ -68,7 +68,7 @@ namespace cxx {
             }
         }
 
-        void insert_afer(K const& prev_k, K const& k, V const& v) {
+        void insert_afer(K const& prev_k, K const& k, V const& v) { // except
             auto position = data_ptr->iters.find(prev_k);
 
             if (data_ptr->iters.find(k) != data_ptr->iters.end() 
@@ -91,19 +91,21 @@ namespace cxx {
         }
 
         void remove() { // except
-            ensure_unique();
-
             if (size() == 0) {
                 throw std::invalid_argument("Binder is empty");
             }
 
+            ensure_unique();
+
             K k = data_ptr->data.front().first;
-            data_ptr->data.pop_front(); // no-throw gurantee
+            
             auto it = data_ptr->iters.find(k); // strong gurantee
             data_ptr->iters.erase(it); // no-throw gurantee / strong gurantee
+
+            data_ptr->data.pop_front(); // no-throw gurantee
         }
 
-        constexpr void remove(K const& k) {
+        constexpr void remove(K const& k) { // except
             auto position = data_ptr->iters.find(k);
 
             if (k == data_ptr->iter.end()) {
@@ -117,11 +119,12 @@ namespace cxx {
         }
 
         constexpr V& read(K const& k) { // except
-            ensure_unique();
             auto it = data_ptr->iters.find(k);
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
             }
+
+            ensure_unique();
             return it->second->second;
         }
 

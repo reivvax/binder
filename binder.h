@@ -4,15 +4,42 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <bits/stdc++.h>
 
 namespace detail {
     template<typename K, typename V, typename K2, typename V2>
     concept convertible_binder = std::convertible_to<K2, K> && std::convertible_to<V2, V>;
 }
 
+template <class T>
+constexpr
+std::string_view
+type_name()
+{
+    using namespace std;
+#ifdef __clang__
+    string_view p = __PRETTY_FUNCTION__;
+    return string_view(p.data() + 34, p.size() - 34 - 1);
+#elif defined(__GNUC__)
+    string_view p = __PRETTY_FUNCTION__;
+#  if __cplusplus < 201402
+    return string_view(p.data() + 36, p.size() - 36 - 1);
+#  else
+    return string_view(p.data() + 49, p.find(';', 49) - 49);
+#  endif
+#elif defined(_MSC_VER)
+    string_view p = __FUNCSIG__;
+    return string_view(p.data() + 84, p.size() - 84 - 7);
+#endif
+}
+
 namespace cxx {
     template <typename K, typename V>
     class binder {
+        // using data_list = std::list<std::pair<K, V>>;
+        // using data_iter = typename data_list::iterator;
+        // using iters_map = std::map<K, typename data_list::iterator>;
+
         struct Data {
             std::list<std::pair<K, V>> data;
             std::map<K, typename std::list<std::pair<K, V>>::iterator> iters;
@@ -68,19 +95,25 @@ namespace cxx {
             }
         }
 
-        void insert_afer(K const& prev_k, K const& k, V const& v) { // except
-            auto position = data_ptr->iters.find(prev_k);
-
+        void insert_after(K const& prev_k, K const& k, V const& v) { // except
+            auto map_iter = data_ptr->iters.find(prev_k);
+            
             if (data_ptr->iters.find(k) != data_ptr->iters.end() 
-                || position == data_ptr->iters.end()) {
+                || map_iter == data_ptr->iters.end()) {
                     throw std::invalid_argument("Key already exists");
             }
 
             ensure_unique();
             
-            position++; // iterator points to the element after prev_k
-            data_ptr->data.insert(position, {k, v}); // strong guarantee
-            position--; // iterator points to inserted element
+            auto position = map_iter->second;
+            // std::cout << type_name<decltype(data_ptr->iters)>() << "\n";
+            // std::cout << type_name<decltype(map_iter)>() << "\n";
+            
+            // std::cout << type_name<decltype(position)>() << "\n";
+
+            position++;                                 // iterator points to the element after prev_k
+            data_ptr->data.insert(position, {k, v});    // strong guarantee
+            --position;                                 // iterator points to inserted element
             
             try {
                 data_ptr->iters[k] = position; // strong guarantee
@@ -106,15 +139,17 @@ namespace cxx {
         }
 
         constexpr void remove(K const& k) { // except
-            auto position = data_ptr->iters.find(k);
+            auto map_iter = data_ptr->iters.find(k);
 
-            if (k == data_ptr->iter.end()) {
+            if (map_iter == data_ptr->iter.end()) {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 
             ensure_unique();
 
-            data_ptr->iters.erase(k);            
+            auto position = map_iter->second;
+
+            data_ptr->iters.erase(map_iter); // no-throw
             data_ptr->data.erase(position); // no-throw
         }
 
@@ -143,6 +178,13 @@ namespace cxx {
         constexpr void clear() noexcept {
             data_ptr->data.clear();
             data_ptr->iters.clear();
+        }
+
+        void _print() {
+            for (auto &e : data_ptr->data)
+                std::cout << e.second << " ";
+
+            std::cout << "\n";
         }
 
 

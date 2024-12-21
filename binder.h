@@ -36,13 +36,13 @@ type_name()
 namespace cxx {
     template <typename K, typename V>
     class binder {
-        // using data_list = std::list<std::pair<K, V>>;
-        // using data_iter = typename data_list::iterator;
-        // using iters_map = std::map<K, typename data_list::iterator>;
+        using data_list = std::list<std::pair<K, V>>;
+        using data_iter = typename data_list::iterator;
+        using iters_map = std::map<K, typename data_list::iterator>;
 
         struct Data {
-            std::list<std::pair<K, V>> data;
-            std::map<K, typename std::list<std::pair<K, V>>::iterator> iters;
+            data_list data;
+            iters_map iters;
         };
 
         std::shared_ptr<Data> data_ptr;
@@ -106,10 +106,6 @@ namespace cxx {
             ensure_unique();
             
             auto position = map_iter->second;
-            // std::cout << type_name<decltype(data_ptr->iters)>() << "\n";
-            // std::cout << type_name<decltype(map_iter)>() << "\n";
-            
-            // std::cout << type_name<decltype(position)>() << "\n";
 
             position++;                                 // iterator points to the element after prev_k
             data_ptr->data.insert(position, {k, v});    // strong guarantee

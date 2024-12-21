@@ -11,6 +11,7 @@ namespace detail {
     concept convertible_binder = std::convertible_to<K2, K> && std::convertible_to<V2, V>;
 }
 
+// Just for debugging purposes
 template <class T>
 constexpr
 std::string_view
@@ -70,7 +71,9 @@ namespace cxx {
         binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
             rhs.data_ptr = nullptr;
         }
-
+        
+        // TODO Im not sure if it is intended to work like this 
+        // it's possible that template is undesired here
         template <typename K2, typename V2>
         requires detail::convertible_binder<K, V, K2, V2>
         binder& operator=(binder<K2, V2> rhs) {
@@ -84,13 +87,13 @@ namespace cxx {
 
             ensure_unique();
 
-            data_ptr->data.push_front({k, v}); // strong gurantee
+            data_ptr->data.push_front({k, v});          // strong gurantee
 
             try {
-                auto it = data_ptr->data.begin(); // no-throw gurantee
-                data_ptr->iters[k] = it; // strong_gurantee
+                auto it = data_ptr->data.begin();       // no-throw gurantee
+                data_ptr->iters[k] = it;                // strong_gurantee
             } catch (...) {
-                data_ptr->data.pop_front(); // no-throw gurantee
+                data_ptr->data.pop_front();             // no-throw gurantee
                 throw;
             }
         }
@@ -112,9 +115,9 @@ namespace cxx {
             --position;                                 // iterator points to inserted element
             
             try {
-                data_ptr->iters[k] = position; // strong guarantee
+                data_ptr->iters[k] = position;          // strong guarantee
             } catch (...) {
-                data_ptr->data.erase(position); // no-throw
+                data_ptr->data.erase(position);         // no-throw
                 throw;
             }
         }
@@ -128,10 +131,10 @@ namespace cxx {
 
             K k = data_ptr->data.front().first;
             
-            auto it = data_ptr->iters.find(k); // strong gurantee
-            data_ptr->iters.erase(it); // no-throw gurantee / strong gurantee
+            auto it = data_ptr->iters.find(k);          // strong gurantee
+            data_ptr->iters.erase(it);                  // no-throw gurantee / strong guarantee
 
-            data_ptr->data.pop_front(); // no-throw gurantee
+            data_ptr->data.pop_front();                 // no-throw guarantee
         }
 
         constexpr void remove(K const& k) { // except
@@ -145,8 +148,8 @@ namespace cxx {
 
             auto position = map_iter->second;
 
-            data_ptr->iters.erase(map_iter); // no-throw
-            data_ptr->data.erase(position); // no-throw
+            data_ptr->iters.erase(map_iter);            // no-throw
+            data_ptr->data.erase(position);             // no-throw
         }
 
         constexpr V& read(K const& k) { // except
@@ -168,7 +171,7 @@ namespace cxx {
         }
 
         constexpr size_t size() const noexcept {
-            return data_ptr->data.size(); // noexcept
+            return data_ptr->data.size();
         }
 
         constexpr void clear() noexcept {

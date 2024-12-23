@@ -142,7 +142,7 @@ namespace cxx {
         constexpr void remove(K const& k) { // except
             auto map_iter = data_ptr->iters.find(k);
 
-            if (map_iter == data_ptr->iter.end()) {
+            if (map_iter == data_ptr->iters.end()) {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 

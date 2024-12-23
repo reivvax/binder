@@ -74,6 +74,8 @@ namespace cxx {
             rhs.data_ptr = nullptr;
         }
         
+        ~binder() = default;
+
         // TODO Im not sure if it is intended to work like this 
         // it's possible that template is undesired here
         template <typename K2, typename V2>
@@ -112,7 +114,7 @@ namespace cxx {
             
             auto position = map_iter->second;
 
-            position++;                                 // iterator points to the element after prev_k
+            ++position;                                 // iterator points to the element after prev_k
             data_ptr->data.insert(position, {k, v});    // strong guarantee
             --position;                                 // iterator points to inserted element
             

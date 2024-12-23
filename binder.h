@@ -4,7 +4,9 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <bits/stdc++.h>
+#include <iterator>
+
+#include <iostream>
 
 namespace detail {
     template<typename K, typename V, typename K2, typename V2>
@@ -188,16 +190,22 @@ namespace cxx {
 
 
         class const_iterator {
-            typename std::list<V>::const_iterator current;
+            typename data_list::const_iterator current;
 
         public:
+            using difference_type = std::ptrdiff_t;
             using value_type = V;
+            using pointer = const V*;
+            using reference = const V&;
+            using itarator_category = std::forward_iterator_tag;
 
-            explicit const_iterator(typename std::list<V>::const_iterator it)
+            explicit const_iterator(typename data_list::const_iterator it)
                 : current(it) {}
 
-            const V& operator*() const { return *current; }
-            const V* operator->() const { return &(*current); }
+            ~const_iterator() = default;
+
+            const V& operator*() const { return (*current).second; }
+            const V* operator->() const { return &((*current).second); }
 
             const_iterator& operator++() {
                 ++current;
@@ -210,8 +218,12 @@ namespace cxx {
                 return tmp;
             }
 
-            bool operator==(const const_iterator& other) const {
-                return current == other.current;
+            const_iterator& operator=(const_iterator const& rhs) {
+                current = rhs.current;
+            }
+
+            bool operator==(const const_iterator& other) const noexcept {
+                return current == other.current; // no-except https://en.cppreference.com/w/cpp/iterator/basic_const_iterator
             }
 
             bool operator!=(const const_iterator& other) const {

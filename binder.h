@@ -131,11 +131,11 @@ namespace cxx {
                 throw std::invalid_argument("Binder is empty");
             }
 
-            ensure_unique();
-
             K k = data_ptr->data.front().first;
-            
             auto it = data_ptr->iters.find(k);          // strong gurantee
+
+            ensure_unique();
+            
             data_ptr->iters.erase(it);                  // no-throw gurantee / strong guarantee
 
             data_ptr->data.pop_front();                 // no-throw guarantee

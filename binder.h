@@ -135,7 +135,7 @@ namespace cxx {
             auto it = data_ptr->iters.find(k);          // strong gurantee
 
             ensure_unique();
-            
+
             data_ptr->iters.erase(it);                  // no-throw gurantee / strong guarantee
 
             data_ptr->data.pop_front();                 // no-throw guarantee
@@ -200,6 +200,10 @@ namespace cxx {
             using pointer = const V*;
             using reference = const V&;
             using itarator_category = std::forward_iterator_tag;
+
+            const_iterator() = default;
+
+            const_iterator(const const_iterator& rhs) : current(rhs.current) {}
 
             explicit const_iterator(typename data_list::const_iterator it)
                 : current(it) {}

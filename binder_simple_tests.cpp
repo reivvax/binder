@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <string>
 #include "binder.h" // Załóżmy, że tu jest zaimplementowana klasa binder
+#include <vector>
 
 // Pomocnicza funkcja testująca - raportuje wynik
 void assert_true(bool condition, const std::string& test_name) {
@@ -158,8 +159,210 @@ void gpt_tests() {
     }
 }
 
+void copy_tests() {
+
+    // Test 1:  
+    {
+        cxx::binder<std::string, std::string> b1;
+        b1.insert_front("A", "Note A");
+
+        cxx::binder<std::string, std::string> b2 = b1;
+        b2.insert_front("B", "Note B");   
+
+        b2.remove("A");
+
+        assert_true(b1.size() == 1, "Original binder remains unaffected after copy-on-write");
+        assert_true(b2.size() == 1, "Modified binder has correct size");
+        assert_true(b2.read("B") == "Note B", "Modified binder has correct value");
+
+        try {
+            b2.read("A");
+            assert_true(false, "Read non-existent key throws exception");
+        } catch (const std::invalid_argument&) {
+            assert_true(true, "Read non-existent key throws exception");
+        }
+    }
+
+}
+
+void noexcept_tests() {
+    // Sprawdzanie czy metoda `clear` jest noexcept
+    assert_true(noexcept(std::declval<cxx::binder<std::string, std::string>>().clear()), 
+                "Method clear is noexcept");
+
+    // Sprawdzanie czy konstruktor przenoszący jest noexcept
+    assert_true(noexcept(cxx::binder<std::string, std::string>(std::declval<cxx::binder<std::string, std::string>&&>())), 
+                "Move constructor is noexcept");
+
+    // Sprawdzanie czy destruktor jest noexcept
+    assert_true(noexcept(std::declval<cxx::binder<std::string, std::string>>().~binder()), 
+                "Destructor is noexcept");
+}
+
+void strong_guarantee_tests() {
+
+
+    struct ThrowingValue {
+        int x;
+        ThrowingValue() { throw std::runtime_error("Simulated failure"); }
+        ThrowingValue(int x) : x(x) {}
+
+        ThrowingValue(const ThrowingValue& other) : x(other.x) {}
+
+        ThrowingValue(ThrowingValue&& other) {
+            x = std::move(other.x);
+        }
+
+        bool operator==(const ThrowingValue& other) const {
+            return x == other.x;
+        }
+
+        bool operator!=(const ThrowingValue& other) const {
+            return !(*this == other);
+        }
+
+        ThrowingValue& operator=(const ThrowingValue& other) {
+            x = other.x;
+            return *this;
+        }
+
+        ThrowingValue& operator=(ThrowingValue&& other) {
+            x = std::move(other.x);
+            return *this;
+        }
+    };
+
+    // Test 1: Insert front
+    {
+        cxx::binder<std::string, ThrowingValue> binder;
+        binder.insert_front("key1", ThrowingValue(1));
+        binder.insert_front("key2", ThrowingValue(2));
+
+        auto backup = binder;
+
+        try {
+            binder.insert_front("key1", ThrowingValue());
+        } catch (const std::invalid_argument &) {
+            // ignore
+        } catch (...) {
+            // ignore
+        }
+
+        bool g1 = binder.size() == backup.size();
+        bool g2 = binder.read("key1") == backup.read("key1");
+        bool g3 = binder.read("key2") == backup.read("key2");
+
+        assert_true(g1 && g2 && g3, "Insert front strong guarantee");
+    }
+
+    // Test 2: Insert after
+    {
+        cxx::binder<std::string, ThrowingValue> binder;
+        binder.insert_front("key1", ThrowingValue(1));
+        binder.insert_front("key2", ThrowingValue(2));
+
+        auto backup = binder;
+
+        try {
+            binder.insert_after("key2", "key3", ThrowingValue());
+        } catch (const std::invalid_argument &) {
+            // ignore
+        } catch (...) {
+            // ignore
+        }
+
+        bool g1 = binder.size() == backup.size();
+        bool g2 = binder.read("key1") == backup.read("key1");
+        bool g3 = binder.read("key2") == backup.read("key2");
+
+        assert_true(g1 && g2 && g3, "Insert after strong guarantee");
+    }
+
+    // Test 3: remove
+    {
+        cxx::binder<std::string, ThrowingValue> binder;
+
+        auto backup = binder;
+        backup.insert_front("key1", ThrowingValue(1));
+        backup.insert_front("key2", ThrowingValue(2));
+
+        try {
+            binder.remove();
+        } catch (const std::invalid_argument &) {
+            // ignore
+        } catch (...) {
+            // ignore
+        }
+
+        binder.insert_front("key1", ThrowingValue(1));
+        binder.insert_front("key2", ThrowingValue(2));
+
+        bool g1 = binder.size() == backup.size();
+        bool g2 = binder.read("key1") == backup.read("key1");
+        bool g3 = binder.read("key2") == backup.read("key2");
+
+        assert_true(g1 && g2 && g3, "Remove strong guarantee");
+    }
+
+    // Test 4: non-const read
+    {
+        cxx::binder<std::string, ThrowingValue> binder;
+        binder.insert_front("key1", ThrowingValue(1));
+        binder.insert_front("key2", ThrowingValue(2));
+
+        ThrowingValue& a = binder.read("key1");
+
+        a = ThrowingValue(3);
+        assert_true(a == ThrowingValue(3), "Non-const read allows modification");
+
+        auto backup = binder;
+
+        try {
+            a = binder.read("key3");
+        } catch (const std::invalid_argument &) {
+            // ignore
+        } catch (...) {
+            // ignore
+        }
+
+        bool g1 = binder.size() == backup.size();
+        bool g2 = binder.read("key1") == backup.read("key1");
+        bool g3 = binder.read("key2") == backup.read("key2");
+
+        assert_true(g1 && g2 && g3, "Non-const read strong guarantee");
+    }
+
+    // Test 5: const read
+    {
+        cxx::binder<std::string, ThrowingValue> binder;
+        binder.insert_front("key1", ThrowingValue(1));
+        binder.insert_front("key2", ThrowingValue(2));
+
+        auto backup = binder;
+
+        try {
+            const ThrowingValue& a = binder.read("key3"); // can be warned by compiler
+        } catch (const std::invalid_argument &) {
+            // ignore
+        } catch (...) {
+            // ignore
+        }
+        
+        bool g1 = binder.size() == backup.size();
+        bool g2 = binder.read("key1") == backup.read("key1");
+        bool g3 = binder.read("key2") == backup.read("key2");
+
+        assert_true(g1 && g2 && g3, "Const read strong guarantee");
+    }
+
+}
+
+
 int main() {
     simple_tests();
     gpt_tests();
+    copy_tests();
+    noexcept_tests();
+    strong_guarantee_tests();
     return 0;
 }

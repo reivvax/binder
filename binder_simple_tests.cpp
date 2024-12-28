@@ -357,7 +357,6 @@ void strong_guarantee_tests() {
 
 }
 
-
 int main() {
     simple_tests();
     gpt_tests();

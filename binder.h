@@ -6,8 +6,6 @@
 #include <memory>
 #include <iterator>
 
-#include <iostream>
-
 namespace cxx {
     template <typename K, typename V>
     class binder {
@@ -21,7 +19,6 @@ namespace cxx {
             data_list data;
             iters_map iters;
         };
-
 
         std::shared_ptr<Data> data_ptr;
         bool was_mutable_read;
@@ -42,7 +39,7 @@ namespace cxx {
                 std::shared_ptr<Data> res = move(data_ptr);
                 data_ptr = new_data_ptr;
 
-                return res; // move?
+                return res;
             }
             return data_ptr;
         }
@@ -64,6 +61,7 @@ namespace cxx {
         binder& operator=(binder<K, V> rhs) {
             data_ptr = std::move(rhs.data_ptr);
             was_mutable_read = false;
+            return *this;
         }
 
         void insert_front(K const& k, V const& v) { // except
@@ -85,11 +83,11 @@ namespace cxx {
             }
 
             try {
-                auto it = data_ptr->data.begin();       // no-throw gurantee
-                data_ptr->iters[k] = it;                // strong_gurantee
+                auto it = data_ptr->data.begin();           // no-throw gurantee
+                data_ptr->iters[k] = it;                    // strong_gurantee
                 was_mutable_read = false;
             } catch (...) {
-                data_ptr->data.pop_front();             // no-throw gurantee
+                data_ptr->data.pop_front();                 // no-throw gurantee
                 data_ptr = std::move(prev);
                 throw;
             }
@@ -121,10 +119,10 @@ namespace cxx {
             }
             
             try {
-                data_ptr->iters[k] = position;          // strong guarantee
+                data_ptr->iters[k] = position;              // strong guarantee
                 was_mutable_read = false;
             } catch (...) {
-                data_ptr->data.erase(position);         // no-throw
+                data_ptr->data.erase(position);             // no-throw
                 data_ptr = move(prev);
                 throw;
             }
@@ -140,13 +138,13 @@ namespace cxx {
             }
 
             K k = data_ptr->data.front().first;
-            auto it = data_ptr->iters.find(k);          // strong gurantee
+            auto it = data_ptr->iters.find(k);              // strong gurantee
 
             ensure_unique();
 
-            data_ptr->iters.erase(it);                  // no-throw
+            data_ptr->iters.erase(it);                      // no-throw
 
-            data_ptr->data.pop_front();                 // no-throw
+            data_ptr->data.pop_front();                     // no-throw
             was_mutable_read = false;
         }
 
@@ -165,8 +163,8 @@ namespace cxx {
 
             auto position = map_iter->second;
 
-            data_ptr->iters.erase(map_iter);            // no-throw
-            data_ptr->data.erase(position);             // no-throw
+            data_ptr->iters.erase(map_iter);                // no-throw
+            data_ptr->data.erase(position);                 // no-throw
             was_mutable_read = false;
         }
 
@@ -211,7 +209,6 @@ namespace cxx {
                 data_ptr->data.clear();
                 data_ptr->iters.clear();
             } else {
-                // TODO: should make_shared, but it throws exceptions
                 data_ptr = nullptr;
             }
         }
@@ -235,8 +232,8 @@ namespace cxx {
 
             ~const_iterator() = default;
 
-            const V& operator*() const noexcept { return (*current).second; }
-            const V* operator->() const noexcept { return &((*current).second); }
+            const V& operator*() const noexcept { return current->second; }
+            const V* operator->() const noexcept { return &(current->second); }
 
             const_iterator& operator++() noexcept {
                 ++current;
@@ -254,7 +251,7 @@ namespace cxx {
             }
 
             bool operator==(const const_iterator& other) const noexcept {
-                return current == other.current; // no-except https://en.cppreference.com/w/cpp/iterator/basic_const_iterator
+                return current == other.current; // no-except
             }
 
             bool operator!=(const const_iterator& other) const {
@@ -273,7 +270,6 @@ namespace cxx {
                 return const_iterator(EMPTY_LIST.cbegin());
             return const_iterator(data_ptr->data.cend()); 
         }
-
     };
 }
 

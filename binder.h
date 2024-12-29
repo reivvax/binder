@@ -39,7 +39,7 @@ namespace cxx {
                 std::shared_ptr<Data> res = move(data_ptr);
                 data_ptr = new_data_ptr;
 
-                return move(res); // move?
+                return res; // move?
             }
             return data_ptr;
         }
@@ -74,7 +74,12 @@ namespace cxx {
 
             std::shared_ptr<Data> prev = ensure_unique();
 
-            data_ptr->data.push_front({k, v});          // strong gurantee
+            try {
+                data_ptr->data.push_front({k, v});          // strong gurantee
+            } catch (...) {
+                data_ptr = move(prev);
+                throw;
+            }
 
             try {
                 auto it = data_ptr->data.begin();       // no-throw gurantee

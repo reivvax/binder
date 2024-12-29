@@ -2,3 +2,4 @@
 *.out
 *tests
 binder_example
+src

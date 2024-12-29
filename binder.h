@@ -210,15 +210,15 @@ namespace cxx {
 
             ~const_iterator() = default;
 
-            const V& operator*() const { return (*current).second; }
-            const V* operator->() const { return &((*current).second); }
+            const V& operator*() const noexcept { return (*current).second; }
+            const V* operator->() const noexcept { return &((*current).second); }
 
-            const_iterator& operator++() {
+            const_iterator& operator++() noexcept {
                 ++current;
                 return *this;
             }
 
-            const_iterator operator++(int) {
+            const_iterator operator++(int) noexcept {
                 const_iterator tmp = *this;
                 ++(*this);
                 return tmp;

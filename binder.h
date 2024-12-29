@@ -108,6 +108,7 @@ namespace cxx {
             try {
                 auto it = data_ptr->data.begin();       // no-throw gurantee
                 data_ptr->iters[k] = it;                // strong_gurantee
+                was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.pop_front();             // no-throw gurantee
                 throw;
@@ -136,6 +137,7 @@ namespace cxx {
             
             try {
                 data_ptr->iters[k] = position;          // strong guarantee
+                was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);         // no-throw
                 throw;
@@ -159,6 +161,7 @@ namespace cxx {
             data_ptr->iters.erase(it);                  // no-throw gurantee / strong guarantee
 
             data_ptr->data.pop_front();                 // no-throw guarantee
+            was_mutable_read = false;
         }
 
         constexpr void remove(K const& k) { // except
@@ -178,6 +181,7 @@ namespace cxx {
 
             data_ptr->iters.erase(map_iter);            // no-throw
             data_ptr->data.erase(position);             // no-throw
+            was_mutable_read = false;
         }
 
         constexpr V& read(K const& k) { // except

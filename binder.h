@@ -51,7 +51,10 @@ namespace cxx {
         std::shared_ptr<Data> data_ptr;
         
         void ensure_unique() {
-            if (!data_ptr.unique()) {
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            } 
+            else if (!data_ptr.unique()) {
                 std::shared_ptr<Data> new_data_ptr = std::make_shared<Data>();
 
                 for (const auto& item : data_ptr->data) {
@@ -85,6 +88,10 @@ namespace cxx {
         }
 
         void insert_front(K const& k, V const& v) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             if (data_ptr->iters.find(k) != data_ptr->iters.end()) {
                 throw std::invalid_argument("Key already exists");
             }
@@ -103,6 +110,10 @@ namespace cxx {
         }
 
         void insert_after(K const& prev_k, K const& k, V const& v) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             auto map_iter = data_ptr->iters.find(prev_k);
             
             if (data_ptr->iters.find(k) != data_ptr->iters.end() 
@@ -127,6 +138,10 @@ namespace cxx {
         }
 
         void remove() { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             if (size() == 0) {
                 throw std::invalid_argument("Binder is empty");
             }
@@ -142,6 +157,10 @@ namespace cxx {
         }
 
         constexpr void remove(K const& k) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             auto map_iter = data_ptr->iters.find(k);
 
             if (map_iter == data_ptr->iters.end()) {
@@ -157,6 +176,10 @@ namespace cxx {
         }
 
         constexpr V& read(K const& k) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             auto it = data_ptr->iters.find(k);
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
@@ -167,6 +190,10 @@ namespace cxx {
         }
 
         constexpr V const& read(K const& k) const {
+            if (!data_ptr) {
+                throw std::invalid_argument("Key does not exist");
+            }
+
             auto it = data_ptr->iters.find(k);
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
@@ -175,12 +202,20 @@ namespace cxx {
         }
 
         constexpr size_t size() const noexcept {
+            if (!data_ptr) {
+                return 0;
+            }
             return data_ptr->data.size();
         }
 
         constexpr void clear() noexcept {
-            data_ptr->data.clear();
-            data_ptr->iters.clear();
+            if (data_ptr && data_ptr.unique()) {
+                data_ptr->data.clear();
+                data_ptr->iters.clear();
+            } else {
+                // TODO: should make_shared, but it throws exceptions
+                data_ptr = nullptr;
+            }
         }
 
         void _print() {

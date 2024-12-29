@@ -263,13 +263,13 @@ namespace cxx {
         };
 
         const_iterator cbegin() const noexcept { 
-            if (data_ptr)
+            if (!data_ptr)
                 return const_iterator(EMPTY_LIST.cbegin());
             return const_iterator(data_ptr->data.cbegin()); 
         }
 
         const_iterator cend() const noexcept { 
-            if (data_ptr)
+            if (!data_ptr)
                 return const_iterator(EMPTY_LIST.cbegin());
             return const_iterator(data_ptr->data.cend()); 
         }

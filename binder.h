@@ -75,7 +75,6 @@ namespace cxx {
                 throw std::invalid_argument("Key already exists");
             }
 
-            bool was_unique = data_ptr.unique();
             auto prev = ensure_unique();
 
             try {
@@ -88,8 +87,7 @@ namespace cxx {
             try {
                 auto it = data_ptr->data.begin();       // no-throw gurantee
                 data_ptr->iters[k] = it;                // strong_gurantee
-                if (!was_unique)
-                    was_mutable_read = false;
+                was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.pop_front();             // no-throw gurantee
                 data_ptr = std::move(prev);
@@ -109,7 +107,6 @@ namespace cxx {
                     throw std::invalid_argument("Key already exists");
             }
 
-            bool was_unique = data_ptr.unique();
             auto prev = ensure_unique();
             
             auto position = map_iter->second;
@@ -125,8 +122,7 @@ namespace cxx {
             
             try {
                 data_ptr->iters[k] = position;          // strong guarantee
-                if (!was_unique)
-                    was_mutable_read = false;
+                was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);         // no-throw
                 data_ptr = move(prev);
@@ -146,14 +142,12 @@ namespace cxx {
             K k = data_ptr->data.front().first;
             auto it = data_ptr->iters.find(k);          // strong gurantee
 
-            bool was_unique = data_ptr.unique();
             ensure_unique();
 
             data_ptr->iters.erase(it);                  // no-throw
 
             data_ptr->data.pop_front();                 // no-throw
-            if (!was_unique)
-                was_mutable_read = false;
+            was_mutable_read = false;
         }
 
         constexpr void remove(K const& k) { // except
@@ -167,15 +161,13 @@ namespace cxx {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 
-            bool was_unique = data_ptr.unique();
             ensure_unique();
 
             auto position = map_iter->second;
 
             data_ptr->iters.erase(map_iter);            // no-throw
             data_ptr->data.erase(position);             // no-throw
-            if (!was_unique)
-                was_mutable_read = false;
+            was_mutable_read = false;
         }
 
         constexpr V& read(K const& k) { // except

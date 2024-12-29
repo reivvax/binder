@@ -148,7 +148,7 @@ namespace cxx {
             was_mutable_read = false;
         }
 
-        constexpr void remove(K const& k) { // except
+        void remove(K const& k) { // except
             if (!data_ptr) {
                 data_ptr = std::make_shared<Data>();
             }
@@ -168,7 +168,7 @@ namespace cxx {
             was_mutable_read = false;
         }
 
-        constexpr V& read(K const& k) { // except
+        V& read(K const& k) { // except
             if (!data_ptr) {
                 data_ptr = std::make_shared<Data>();
             }
@@ -184,7 +184,7 @@ namespace cxx {
             return it->second->second;
         }
 
-        constexpr V const& read(K const& k) const {
+        V const& read(K const& k) const {
             if (!data_ptr) {
                 throw std::invalid_argument("Key does not exist");
             }
@@ -196,14 +196,14 @@ namespace cxx {
             return const_cast<V&>(it->second->second);
         }
 
-        constexpr size_t size() const noexcept {
+        size_t size() const noexcept {
             if (!data_ptr) {
                 return 0;
             }
             return data_ptr->data.size();
         }
 
-        constexpr void clear() noexcept {
+        void clear() noexcept {
             was_mutable_read = false;
             if (data_ptr && data_ptr.unique()) {
                 data_ptr->data.clear();

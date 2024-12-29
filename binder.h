@@ -8,34 +8,6 @@
 
 #include <iostream>
 
-namespace detail {
-    template<typename K, typename V, typename K2, typename V2>
-    concept convertible_binder = std::convertible_to<K2, K> && std::convertible_to<V2, V>;
-}
-
-// Just for debugging purposes
-template <class T>
-constexpr
-std::string_view
-type_name()
-{
-    using namespace std;
-#ifdef __clang__
-    string_view p = __PRETTY_FUNCTION__;
-    return string_view(p.data() + 34, p.size() - 34 - 1);
-#elif defined(__GNUC__)
-    string_view p = __PRETTY_FUNCTION__;
-#  if __cplusplus < 201402
-    return string_view(p.data() + 36, p.size() - 36 - 1);
-#  else
-    return string_view(p.data() + 49, p.find(';', 49) - 49);
-#  endif
-#elif defined(_MSC_VER)
-    string_view p = __FUNCSIG__;
-    return string_view(p.data() + 84, p.size() - 84 - 7);
-#endif
-}
-
 namespace cxx {
     template <typename K, typename V>
     class binder {
@@ -51,10 +23,10 @@ namespace cxx {
         std::shared_ptr<Data> data_ptr;
         bool was_mutable_read;
 
-        void ensure_unique() {
+        std::shared_ptr<Data> ensure_unique() {
             if (!data_ptr) {
                 data_ptr = std::make_shared<Data>();
-            } 
+            }
             else if (!data_ptr.unique()) {
                 std::shared_ptr<Data> new_data_ptr = std::make_shared<Data>();
 
@@ -64,14 +36,17 @@ namespace cxx {
                     new_data_ptr->iters[item.first] = it;
                 }
 
+                std::shared_ptr<Data> res = move(data_ptr);
                 data_ptr = new_data_ptr;
+
+                return move(res); // move?
             }
+            return data_ptr;
         }
 
     public:
         binder() : data_ptr(std::make_shared<Data>()), was_mutable_read(false) {} // except
 
-        // TODO jeżeli się typy nie zgadzają, to chyba nie musi się kompilować
         binder(const binder<K, V>& rhs) : data_ptr(rhs.data_ptr) {
             if (rhs.was_mutable_read)
                 ensure_unique();
@@ -83,11 +58,7 @@ namespace cxx {
         
         ~binder() = default;
 
-        // TODO Im not sure if it is intended to work like this 
-        // it's possible that template is undesired here
-        template <typename K2, typename V2>
-        requires detail::convertible_binder<K, V, K2, V2>
-        binder& operator=(binder<K2, V2> rhs) {
+        binder& operator=(binder<K, V> rhs) {
             data_ptr = std::move(rhs.data_ptr);
             was_mutable_read = false;
         }
@@ -101,7 +72,7 @@ namespace cxx {
                 throw std::invalid_argument("Key already exists");
             }
 
-            ensure_unique();
+            std::shared_ptr<Data> prev = ensure_unique();
 
             data_ptr->data.push_front({k, v});          // strong gurantee
 
@@ -111,6 +82,7 @@ namespace cxx {
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.pop_front();             // no-throw gurantee
+                data_ptr = move(prev);
                 throw;
             }
         }
@@ -230,14 +202,6 @@ namespace cxx {
             }
         }
 
-        void _print() {
-            for (auto &e : data_ptr->data)
-                std::cout << e.second << " ";
-
-            std::cout << "\n";
-        }
-
-
         class const_iterator {
             typename data_list::const_iterator current;
 
@@ -286,8 +250,6 @@ namespace cxx {
 
         const_iterator cbegin() const noexcept { return const_iterator(data_ptr->data.cbegin()); }
         const_iterator cend() const noexcept { return const_iterator(data_ptr->data.cend()); }
-
-
 
     };
 }

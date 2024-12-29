@@ -140,16 +140,12 @@ namespace cxx {
             K k = data_ptr->data.front().first;
             auto it = data_ptr->iters.find(k);              // strong gurantee
 
-            auto prev = ensure_unique();
+            ensure_unique();
 
-            try {
-                data_ptr->iters.erase(it);                      // no-throw
-                data_ptr->data.pop_front();                     // no-throw
-                was_mutable_read = false;
-            } catch (...) {
-                data_ptr = std::move(prev);
-                throw;
-            }
+            data_ptr->iters.erase(it);                      // no-throw
+
+            data_ptr->data.pop_front();                     // no-throw
+            was_mutable_read = false;
         }
 
         void remove(K const& k) { // except
@@ -163,18 +159,13 @@ namespace cxx {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 
-            auto prev = ensure_unique();
+            ensure_unique();
 
             auto position = map_iter->second;
 
-            try {
-                data_ptr->iters.erase(map_iter);            // no-throw
-                data_ptr->data.erase(position);             // no-throw
-                was_mutable_read = false;
-            } catch (...) {
-                data_ptr = std::move(prev);
-                throw;
-            }
+            data_ptr->iters.erase(map_iter);                // no-throw
+            data_ptr->data.erase(position);                 // no-throw
+            was_mutable_read = false;
         }
 
         V& read(K const& k) { // except
@@ -187,15 +178,10 @@ namespace cxx {
                 throw std::invalid_argument("Key does not exist");
             }
 
-            auto prev = ensure_unique();
+            ensure_unique();
 
-            try {
-                was_mutable_read = true;
-                return it->second->second;
-            } catch (...) {
-                data_ptr = std::move(prev);
-                throw;
-            }
+            was_mutable_read = true;
+            return it->second->second;
         }
 
         V const& read(K const& k) const {

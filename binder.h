@@ -104,19 +104,25 @@ namespace cxx {
                     throw std::invalid_argument("Key already exists");
             }
 
-            ensure_unique();
+            auto prev = ensure_unique();
             
             auto position = map_iter->second;
 
-            ++position;                                 // iterator points to the element after prev_k
-            data_ptr->data.insert(position, {k, v});    // strong guarantee
-            --position;                                 // iterator points to inserted element
+            try {
+                ++position;                                 // iterator points to the element after prev_k
+                data_ptr->data.insert(position, {k, v});    // strong guarantee
+                --position;                                 // iterator points to inserted element
+            } catch (...) {
+                data_ptr = move(prev);
+                throw;
+            }
             
             try {
                 data_ptr->iters[k] = position;          // strong guarantee
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);         // no-throw
+                data_ptr = move(prev);
                 throw;
             }
         }

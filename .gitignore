@@ -1,5 +1,8 @@
 .vscode
 *.out
 *tests
+*tests2
 binder_example
 src
+run_tests.sh
+Makefile

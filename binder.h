@@ -178,10 +178,21 @@ namespace cxx {
                 throw std::invalid_argument("Key does not exist");
             }
 
-            ensure_unique();
+            bool was_unique = data_ptr.unique();
+            auto prev = ensure_unique();
 
             was_mutable_read = true;
-            return it->second->second;
+            if (was_unique)
+                return it->second->second;
+            else {
+                try {
+                    auto it = data_ptr->iters.find(k);
+                    return it->second->second;
+                } catch (...) {
+                    data_ptr = move(prev);
+                    throw;
+                }
+            }
         }
 
         V const& read(K const& k) const {

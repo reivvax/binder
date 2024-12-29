@@ -140,12 +140,16 @@ namespace cxx {
             K k = data_ptr->data.front().first;
             auto it = data_ptr->iters.find(k);              // strong gurantee
 
-            ensure_unique();
+            auto prev = ensure_unique();
 
-            data_ptr->iters.erase(it);                      // no-throw
-
-            data_ptr->data.pop_front();                     // no-throw
-            was_mutable_read = false;
+            try {
+                data_ptr->iters.erase(it);                      // no-throw
+                data_ptr->data.pop_front();                     // no-throw
+                was_mutable_read = false;
+            } catch (...) {
+                data_ptr = std::move(prev);
+                throw;
+            }
         }
 
         void remove(K const& k) { // except
@@ -159,13 +163,18 @@ namespace cxx {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 
-            ensure_unique();
+            auto prev = ensure_unique();
 
             auto position = map_iter->second;
 
-            data_ptr->iters.erase(map_iter);                // no-throw
-            data_ptr->data.erase(position);                 // no-throw
-            was_mutable_read = false;
+            try {
+                data_ptr->iters.erase(map_iter);            // no-throw
+                data_ptr->data.erase(position);             // no-throw
+                was_mutable_read = false;
+            } catch (...) {
+                data_ptr = std::move(prev);
+                throw;
+            }
         }
 
         V& read(K const& k) { // except
@@ -178,10 +187,15 @@ namespace cxx {
                 throw std::invalid_argument("Key does not exist");
             }
 
-            ensure_unique();
+            auto prev = ensure_unique();
 
-            was_mutable_read = true;
-            return it->second->second;
+            try {
+                was_mutable_read = true;
+                return it->second->second;
+            } catch (...) {
+                data_ptr = std::move(prev);
+                throw;
+            }
         }
 
         V const& read(K const& k) const {

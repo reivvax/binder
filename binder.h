@@ -15,10 +15,13 @@ namespace cxx {
         using data_iter = typename data_list::iterator;
         using iters_map = std::map<K, typename data_list::iterator>;
 
+        static inline const data_list EMPTY_LIST = {};
+
         struct Data {
             data_list data;
             iters_map iters;
         };
+
 
         std::shared_ptr<Data> data_ptr;
         bool was_mutable_read;
@@ -47,7 +50,7 @@ namespace cxx {
     public:
         binder() : data_ptr(std::make_shared<Data>()), was_mutable_read(false) {} // except
 
-        binder(const binder<K, V>& rhs) : data_ptr(rhs.data_ptr) {
+        binder(const binder<K, V>& rhs) : data_ptr(rhs.data_ptr), was_mutable_read(false) {
             if (rhs.was_mutable_read)
                 ensure_unique();
         }
@@ -72,22 +75,24 @@ namespace cxx {
                 throw std::invalid_argument("Key already exists");
             }
 
-            std::shared_ptr<Data> prev = ensure_unique();
+            bool was_unique = data_ptr.unique();
+            auto prev = ensure_unique();
 
             try {
                 data_ptr->data.push_front({k, v});          // strong gurantee
             } catch (...) {
-                data_ptr = move(prev);
+                data_ptr = std::move(prev);
                 throw;
             }
 
             try {
                 auto it = data_ptr->data.begin();       // no-throw gurantee
                 data_ptr->iters[k] = it;                // strong_gurantee
-                was_mutable_read = false;
+                if (!was_unique)
+                    was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.pop_front();             // no-throw gurantee
-                data_ptr = move(prev);
+                data_ptr = std::move(prev);
                 throw;
             }
         }
@@ -104,6 +109,7 @@ namespace cxx {
                     throw std::invalid_argument("Key already exists");
             }
 
+            bool was_unique = data_ptr.unique();
             auto prev = ensure_unique();
             
             auto position = map_iter->second;
@@ -113,13 +119,14 @@ namespace cxx {
                 data_ptr->data.insert(position, {k, v});    // strong guarantee
                 --position;                                 // iterator points to inserted element
             } catch (...) {
-                data_ptr = move(prev);
+                data_ptr = std::move(prev);
                 throw;
             }
             
             try {
                 data_ptr->iters[k] = position;          // strong guarantee
-                was_mutable_read = false;
+                if (!was_unique)
+                    was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);         // no-throw
                 data_ptr = move(prev);
@@ -139,12 +146,14 @@ namespace cxx {
             K k = data_ptr->data.front().first;
             auto it = data_ptr->iters.find(k);          // strong gurantee
 
+            bool was_unique = data_ptr.unique();
             ensure_unique();
 
-            data_ptr->iters.erase(it);                  // no-throw gurantee / strong guarantee
+            data_ptr->iters.erase(it);                  // no-throw
 
-            data_ptr->data.pop_front();                 // no-throw guarantee
-            was_mutable_read = false;
+            data_ptr->data.pop_front();                 // no-throw
+            if (!was_unique)
+                was_mutable_read = false;
         }
 
         constexpr void remove(K const& k) { // except
@@ -158,13 +167,15 @@ namespace cxx {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 
+            bool was_unique = data_ptr.unique();
             ensure_unique();
 
             auto position = map_iter->second;
 
             data_ptr->iters.erase(map_iter);            // no-throw
             data_ptr->data.erase(position);             // no-throw
-            was_mutable_read = false;
+            if (!was_unique)
+                was_mutable_read = false;
         }
 
         constexpr V& read(K const& k) { // except
@@ -177,9 +188,9 @@ namespace cxx {
                 throw std::invalid_argument("Key does not exist");
             }
 
-            was_mutable_read = true;
-
             ensure_unique();
+
+            was_mutable_read = true;
             return it->second->second;
         }
 
@@ -192,7 +203,7 @@ namespace cxx {
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
             }
-            return it->second->second;
+            return const_cast<V&>(it->second->second);
         }
 
         constexpr size_t size() const noexcept {
@@ -259,8 +270,17 @@ namespace cxx {
             }
         };
 
-        const_iterator cbegin() const noexcept { return const_iterator(data_ptr->data.cbegin()); }
-        const_iterator cend() const noexcept { return const_iterator(data_ptr->data.cend()); }
+        const_iterator cbegin() const noexcept { 
+            if (data_ptr)
+                return const_iterator(EMPTY_LIST.cbegin());
+            return const_iterator(data_ptr->data.cbegin()); 
+        }
+
+        const_iterator cend() const noexcept { 
+            if (data_ptr)
+                return const_iterator(EMPTY_LIST.cbegin());
+            return const_iterator(data_ptr->data.cend()); 
+        }
 
     };
 }

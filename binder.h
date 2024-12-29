@@ -49,7 +49,8 @@ namespace cxx {
         };
 
         std::shared_ptr<Data> data_ptr;
-        
+        bool was_mutable_read;
+
         void ensure_unique() {
             if (!data_ptr) {
                 data_ptr = std::make_shared<Data>();
@@ -68,12 +69,15 @@ namespace cxx {
         }
 
     public:
-        binder() : data_ptr(std::make_shared<Data>()) {} // except
+        binder() : data_ptr(std::make_shared<Data>()), was_mutable_read(false) {} // except
 
         // TODO jeżeli się typy nie zgadzają, to chyba nie musi się kompilować
-        binder(const binder<K, V>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
+        binder(const binder<K, V>& rhs) : data_ptr(rhs.data_ptr) {
+            if (rhs.was_mutable_read)
+                ensure_unique();
+        }
 
-        binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
+        binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)), was_mutable_read(false) {
             rhs.data_ptr = nullptr;
         }
         
@@ -85,6 +89,7 @@ namespace cxx {
         requires detail::convertible_binder<K, V, K2, V2>
         binder& operator=(binder<K2, V2> rhs) {
             data_ptr = std::move(rhs.data_ptr);
+            was_mutable_read = false;
         }
 
         void insert_front(K const& k, V const& v) { // except
@@ -185,6 +190,8 @@ namespace cxx {
                 throw std::invalid_argument("Key does not exist");
             }
 
+            was_mutable_read = true;
+
             ensure_unique();
             return it->second->second;
         }
@@ -209,6 +216,7 @@ namespace cxx {
         }
 
         constexpr void clear() noexcept {
+            was_mutable_read = false;
             if (data_ptr && data_ptr.unique()) {
                 data_ptr->data.clear();
                 data_ptr->iters.clear();

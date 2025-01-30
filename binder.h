@@ -6,36 +6,6 @@
 #include <memory>
 #include <iterator>
 
-#include <iostream>
-
-namespace detail {
-    template<typename K, typename V, typename K2, typename V2>
-    concept convertible_binder = std::convertible_to<K2, K> && std::convertible_to<V2, V>;
-}
-
-// Just for debugging purposes
-template <class T>
-constexpr
-std::string_view
-type_name()
-{
-    using namespace std;
-#ifdef __clang__
-    string_view p = __PRETTY_FUNCTION__;
-    return string_view(p.data() + 34, p.size() - 34 - 1);
-#elif defined(__GNUC__)
-    string_view p = __PRETTY_FUNCTION__;
-#  if __cplusplus < 201402
-    return string_view(p.data() + 36, p.size() - 36 - 1);
-#  else
-    return string_view(p.data() + 49, p.find(';', 49) - 49);
-#  endif
-#elif defined(_MSC_VER)
-    string_view p = __FUNCSIG__;
-    return string_view(p.data() + 84, p.size() - 84 - 7);
-#endif
-}
-
 namespace cxx {
     template <typename K, typename V>
     class binder {
@@ -43,15 +13,21 @@ namespace cxx {
         using data_iter = typename data_list::iterator;
         using iters_map = std::map<K, typename data_list::iterator>;
 
+        static inline const data_list EMPTY_LIST = {};
+
         struct Data {
             data_list data;
             iters_map iters;
         };
 
         std::shared_ptr<Data> data_ptr;
-        
-        void ensure_unique() {
-            if (!data_ptr.unique()) {
+        bool was_mutable_read;
+
+        std::shared_ptr<Data> ensure_unique() {
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+            else if (!data_ptr.unique()) {
                 std::shared_ptr<Data> new_data_ptr = std::make_shared<Data>();
 
                 for (const auto& item : data_ptr->data) {
@@ -60,49 +36,68 @@ namespace cxx {
                     new_data_ptr->iters[item.first] = it;
                 }
 
+                std::shared_ptr<Data> res = move(data_ptr);
                 data_ptr = new_data_ptr;
+
+                return res;
             }
+            return data_ptr;
         }
 
     public:
-        binder() : data_ptr(std::make_shared<Data>()) {} // except
+        binder() : data_ptr(std::make_shared<Data>()), was_mutable_read(false) {} // except
 
-        // TODO jeżeli się typy nie zgadzają, to chyba nie musi się kompilować
-        binder(const binder<K, V>& rhs) noexcept : data_ptr(rhs.data_ptr) {}
+        binder(const binder<K, V>& rhs) : data_ptr(rhs.data_ptr), was_mutable_read(false) {
+            if (rhs.was_mutable_read)
+                ensure_unique();
+        }
 
-        binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)) {
+        binder(binder<K, V>&& rhs) noexcept : data_ptr(std::move(rhs.data_ptr)), was_mutable_read(false) {
             rhs.data_ptr = nullptr;
         }
         
         ~binder() = default;
 
-        // TODO Im not sure if it is intended to work like this 
-        // it's possible that template is undesired here
-        template <typename K2, typename V2>
-        requires detail::convertible_binder<K, V, K2, V2>
-        binder& operator=(binder<K2, V2> rhs) {
+        binder& operator=(binder<K, V> rhs) {
             data_ptr = std::move(rhs.data_ptr);
+            was_mutable_read = false;
+            return *this;
         }
 
         void insert_front(K const& k, V const& v) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             if (data_ptr->iters.find(k) != data_ptr->iters.end()) {
                 throw std::invalid_argument("Key already exists");
             }
 
-            ensure_unique();
-
-            data_ptr->data.push_front({k, v});          // strong gurantee
+            auto prev = ensure_unique();
 
             try {
-                auto it = data_ptr->data.begin();       // no-throw gurantee
-                data_ptr->iters[k] = it;                // strong_gurantee
+                data_ptr->data.push_front({k, v});          // strong gurantee
             } catch (...) {
-                data_ptr->data.pop_front();             // no-throw gurantee
+                data_ptr = std::move(prev);
+                throw;
+            }
+
+            try {
+                auto it = data_ptr->data.begin();           // no-throw gurantee
+                data_ptr->iters[k] = it;                    // strong_gurantee
+                was_mutable_read = false;
+            } catch (...) {
+                data_ptr->data.pop_front();                 // no-throw gurantee
+                data_ptr = std::move(prev);
                 throw;
             }
         }
 
         void insert_after(K const& prev_k, K const& k, V const& v) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             auto map_iter = data_ptr->iters.find(prev_k);
             
             if (data_ptr->iters.find(k) != data_ptr->iters.end() 
@@ -110,38 +105,54 @@ namespace cxx {
                     throw std::invalid_argument("Key already exists");
             }
 
-            ensure_unique();
+            auto prev = ensure_unique();
             
             auto position = map_iter->second;
 
-            ++position;                                 // iterator points to the element after prev_k
-            data_ptr->data.insert(position, {k, v});    // strong guarantee
-            --position;                                 // iterator points to inserted element
+            try {
+                ++position;                                 // iterator points to the element after prev_k
+                data_ptr->data.insert(position, {k, v});    // strong guarantee
+                --position;                                 // iterator points to inserted element
+            } catch (...) {
+                data_ptr = std::move(prev);
+                throw;
+            }
             
             try {
-                data_ptr->iters[k] = position;          // strong guarantee
+                data_ptr->iters[k] = position;              // strong guarantee
+                was_mutable_read = false;
             } catch (...) {
-                data_ptr->data.erase(position);         // no-throw
+                data_ptr->data.erase(position);             // no-throw
+                data_ptr = move(prev);
                 throw;
             }
         }
 
         void remove() { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             if (size() == 0) {
                 throw std::invalid_argument("Binder is empty");
             }
 
             K k = data_ptr->data.front().first;
-            auto it = data_ptr->iters.find(k);          // strong gurantee
+            auto it = data_ptr->iters.find(k);              // strong gurantee
 
             ensure_unique();
 
-            data_ptr->iters.erase(it);                  // no-throw gurantee / strong guarantee
+            data_ptr->iters.erase(it);                      // no-throw
 
-            data_ptr->data.pop_front();                 // no-throw guarantee
+            data_ptr->data.pop_front();                     // no-throw
+            was_mutable_read = false;
         }
 
-        constexpr void remove(K const& k) { // except
+        void remove(K const& k) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             auto map_iter = data_ptr->iters.find(k);
 
             if (map_iter == data_ptr->iters.end()) {
@@ -152,44 +163,66 @@ namespace cxx {
 
             auto position = map_iter->second;
 
-            data_ptr->iters.erase(map_iter);            // no-throw
-            data_ptr->data.erase(position);             // no-throw
+            data_ptr->iters.erase(map_iter);                // no-throw
+            data_ptr->data.erase(position);                 // no-throw
+            was_mutable_read = false;
         }
 
-        constexpr V& read(K const& k) { // except
+        V& read(K const& k) { // except
+            if (!data_ptr) {
+                data_ptr = std::make_shared<Data>();
+            }
+
             auto it = data_ptr->iters.find(k);
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
             }
 
-            ensure_unique();
-            return it->second->second;
+            bool was_unique = data_ptr.unique();
+            auto prev = ensure_unique();
+
+            was_mutable_read = true;
+            if (was_unique)
+                return it->second->second;
+            else {
+                try {
+                    auto it = data_ptr->iters.find(k);
+                    return it->second->second;
+                } catch (...) {
+                    data_ptr = move(prev);
+                    throw;
+                }
+            }
         }
 
-        constexpr V const& read(K const& k) const {
+        V const& read(K const& k) const {
+            if (!data_ptr) {
+                throw std::invalid_argument("Key does not exist");
+            }
+
             auto it = data_ptr->iters.find(k);
             if (it == data_ptr->iters.end()) {
                 throw std::invalid_argument("Key does not exist");
             }
-            return it->second->second;
+            return const_cast<V&>(it->second->second);
         }
 
-        constexpr size_t size() const noexcept {
+        size_t size() const noexcept {
+            if (!data_ptr) {
+                return 0;
+            }
             return data_ptr->data.size();
         }
 
-        constexpr void clear() noexcept {
-            data_ptr->data.clear();
-            data_ptr->iters.clear();
+        void clear() noexcept {
+            was_mutable_read = false;
+            if (data_ptr && data_ptr.unique()) {
+                data_ptr->data.clear();
+                data_ptr->iters.clear();
+            } else {
+                data_ptr = nullptr;
+            }
         }
-
-        void _print() {
-            for (auto &e : data_ptr->data)
-                std::cout << e.second << " ";
-
-            std::cout << "\n";
-        }
-
 
         class const_iterator {
             typename data_list::const_iterator current;
@@ -210,8 +243,8 @@ namespace cxx {
 
             ~const_iterator() = default;
 
-            const V& operator*() const noexcept { return (*current).second; }
-            const V* operator->() const noexcept { return &((*current).second); }
+            const V& operator*() const noexcept { return current->second; }
+            const V* operator->() const noexcept { return &(current->second); }
 
             const_iterator& operator++() noexcept {
                 ++current;
@@ -229,7 +262,7 @@ namespace cxx {
             }
 
             bool operator==(const const_iterator& other) const noexcept {
-                return current == other.current; // no-except https://en.cppreference.com/w/cpp/iterator/basic_const_iterator
+                return current == other.current; // no-except
             }
 
             bool operator!=(const const_iterator& other) const {
@@ -237,11 +270,17 @@ namespace cxx {
             }
         };
 
-        const_iterator cbegin() const noexcept { return const_iterator(data_ptr->data.cbegin()); }
-        const_iterator cend() const noexcept { return const_iterator(data_ptr->data.cend()); }
+        const_iterator cbegin() const noexcept { 
+            if (!data_ptr)
+                return const_iterator(EMPTY_LIST.cbegin());
+            return const_iterator(data_ptr->data.cbegin()); 
+        }
 
-
-
+        const_iterator cend() const noexcept { 
+            if (!data_ptr)
+                return const_iterator(EMPTY_LIST.cbegin());
+            return const_iterator(data_ptr->data.cend()); 
+        }
     };
 }
 

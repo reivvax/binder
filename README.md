@@ -1,3 +1,3 @@
 # UW C++ course - assignment 5: Binder
 
-Implementation of a exception safe `binder` structure.
+Implementation of an exception safe `binder` structure.

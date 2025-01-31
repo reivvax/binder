@@ -9,9 +9,15 @@
 namespace cxx {
     template <typename K, typename V>
     class binder {
-        using data_list = std::list<std::pair<K, V>>;
+        struct Note; // (BIG_FIX: added)
+        using data_list = std::list<Note>; // (BIG_FIX: changed <std::pair<K, V>> to <Note>)
         using data_iter = typename data_list::iterator;
         using iters_map = std::map<K, typename data_list::iterator>;
+
+        struct Note {  // (BIG_FIX: added)
+            typename iters_map::iterator first;
+            V second;
+        };
 
         static inline const data_list EMPTY_LIST = {};
 
@@ -33,7 +39,8 @@ namespace cxx {
                 for (const auto& item : data_ptr->data) {
                     new_data_ptr->data.push_back({item.first, item.second});
                     auto it = std::prev(new_data_ptr->data.end());
-                    new_data_ptr->iters[item.first] = it;
+                    new_data_ptr->iters[item.first->first] = it;  // (BIG_FIX: changed item.first to item.first->first)
+                    new_data_ptr->data.back().first = new_data_ptr->iters.find(item.first->first); // (BIG_FIX: added)
                 }
 
                 std::shared_ptr<Data> res = move(data_ptr);
@@ -76,7 +83,7 @@ namespace cxx {
             auto prev = ensure_unique();
 
             try {
-                data_ptr->data.push_front({k, v});          // strong gurantee
+                data_ptr->data.push_front({data_ptr->iters.end(), v});          // strong gurantee  (BIG_FIX: changed {k, v} to {data_ptr->iters.end(), v})
             } catch (...) {
                 data_ptr = std::move(prev);
                 throw;
@@ -85,6 +92,7 @@ namespace cxx {
             try {
                 auto it = data_ptr->data.begin();           // no-throw gurantee
                 data_ptr->iters[k] = it;                    // strong_gurantee
+                data_ptr->data.front().first = data_ptr->iters.find(k); // no-throw gurantee (BIG_FIX: added)
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.pop_front();                 // no-throw gurantee
@@ -111,7 +119,7 @@ namespace cxx {
 
             try {
                 ++position;                                 // iterator points to the element after prev_k
-                data_ptr->data.insert(position, {k, v});    // strong guarantee
+                data_ptr->data.insert(position, {data_ptr->iters.end(), v});    // strong guarantee  (BIG_FIX: changed k to data_ptr->iters.end())
                 --position;                                 // iterator points to inserted element
             } catch (...) {
                 data_ptr = std::move(prev);
@@ -120,6 +128,7 @@ namespace cxx {
             
             try {
                 data_ptr->iters[k] = position;              // strong guarantee
+                position->first = data_ptr->iters.find(k);  // no-throw (BIG_FIX: added)
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);             // no-throw
@@ -137,7 +146,7 @@ namespace cxx {
                 throw std::invalid_argument("Binder is empty");
             }
 
-            K k = data_ptr->data.front().first;
+            K k = data_ptr->data.front().first->first; // (BIG_FIX: added -> first at the end)
 
             ensure_unique();
             auto it = data_ptr->iters.find(k);              // strong gurantee (FIX 103: moved from line 141)

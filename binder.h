@@ -106,7 +106,7 @@ namespace cxx {
             }
 
             auto prev = ensure_unique();
-            
+            map_iter = data_ptr->iters.find(prev_k); // (FIX 103: added)
             auto position = map_iter->second;
 
             try {
@@ -138,9 +138,9 @@ namespace cxx {
             }
 
             K k = data_ptr->data.front().first;
-            auto it = data_ptr->iters.find(k);              // strong gurantee
 
             ensure_unique();
+            auto it = data_ptr->iters.find(k);              // strong gurantee (FIX 103: moved from line 141)
 
             data_ptr->iters.erase(it);                      // no-throw
 
@@ -161,6 +161,7 @@ namespace cxx {
 
             ensure_unique();
 
+            map_iter = data_ptr->iters.find(k); // (FIX 103: added)
             auto position = map_iter->second;
 
             data_ptr->iters.erase(map_iter);                // no-throw

@@ -1,0 +1,16 @@
+103(134), fixed
+201(134), 
+511(134), 
+512(134), 
+513(134), 
+601(134), 
+602(134), 
+604(134) 
+
+
+c – nie kompiluje się lub nie linkuje się, lub nie spełnia statycznej asercji;
+w – kompilator wypisuje ostrzeżenia;
+123 – valgrind zgłasza problem z zarządzaniem pamięcią;
+124 – przekroczenie limitu czasu, 1 sekunda na test;
+134 – niespełniona asercja lub nieobsłużony wyjątek;
+139 – naruszenie ochrony pamięci.

@@ -1,11 +1,11 @@
 103(134), fixed
-201(134), 
-511(134), 
-512(134), 
-513(134), 
-601(134), 
-602(134), 
-604(134) 
+201(134), doesn't work due to having key K twice (in iters and data)
+511(134), doesn't work due to having key K twice (in iters and data)
+512(134), doesn't work due to having key K twice (in iters and data)
+513(134), doesn't work due to having key K twice (in iters and data)
+601(134), doesn't work due to having key K twice (in iters and data)
+602(134), doesn't work due to having key K twice (in iters and data) 
+604(134)  (maybe?) doesn't work due to having key K twice (in iters and data)
 
 
 c – nie kompiluje się lub nie linkuje się, lub nie spełnia statycznej asercji;

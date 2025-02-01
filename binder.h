@@ -43,7 +43,7 @@ namespace cxx {
                     new_data_ptr->data.back().first = new_data_ptr->iters.find(item.first->first); // (BIG_FIX: added)
                 }
 
-                std::shared_ptr<Data> res = move(data_ptr);
+                std::shared_ptr<Data> res = std::move(data_ptr);
                 data_ptr = new_data_ptr;
 
                 return res;
@@ -132,7 +132,7 @@ namespace cxx {
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);             // no-throw
-                data_ptr = move(prev);
+                data_ptr = std::move(prev);
                 throw;
             }
         }
@@ -148,13 +148,16 @@ namespace cxx {
 
             K k = data_ptr->data.front().first->first; // (BIG_FIX: added -> first at the end)
 
-            ensure_unique();
-            auto it = data_ptr->iters.find(k);              // strong gurantee (FIX 103: moved from line 141)
-
-            data_ptr->iters.erase(it);                      // no-throw
-
-            data_ptr->data.pop_front();                     // no-throw
-            was_mutable_read = false;
+            auto prev = ensure_unique();
+            try {
+                auto it = data_ptr->iters.find(k);              // strong gurantee (FIX 103: moved from line 141)
+                data_ptr->iters.erase(it);                      // no-throw
+                data_ptr->data.pop_front();                     // no-throw
+                was_mutable_read = false;
+            } catch (...) {
+                data_ptr = std::move(prev);
+                throw;
+            }
         }
 
         void remove(K const& k) { // except
@@ -168,9 +171,18 @@ namespace cxx {
                 throw std::invalid_argument("Binder does not contain specified key");
             }
 
-            ensure_unique();
+            bool was_unique = data_ptr.unique();
+            auto prev = ensure_unique();
 
-            map_iter = data_ptr->iters.find(k); // (FIX 103: added)
+            if (!was_unique) {
+                try {
+                    map_iter = data_ptr->iters.find(k); // (FIX 103: added)
+                } catch (...) {
+                    data_ptr = std::move(prev);
+                    throw;
+                }
+            }
+            
             auto position = map_iter->second;
 
             data_ptr->iters.erase(map_iter);                // no-throw
@@ -199,7 +211,7 @@ namespace cxx {
                     auto it = data_ptr->iters.find(k);
                     return it->second->second;
                 } catch (...) {
-                    data_ptr = move(prev);
+                    data_ptr = std::move(prev);
                     throw;
                 }
             }

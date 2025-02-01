@@ -1,15 +1,14 @@
 103(134), fixed
 201(134), fixed
 511(134), fixed
-512(134), doesn't work due to having key K twice (in iters and data)
-513(134), doesn't work due to having key K twice (in iters and data)
+512(134), fixed
+513(134), fixed
 601(134), fixed
 602(134), fixed
 604(134)  fixed
 
-502, worked, but doesn't work now (segfault)
-510, worked, but doesn't work now (segfault)
-
+502, fixed
+510, fixed
 
 c – nie kompiluje się lub nie linkuje się, lub nie spełnia statycznej asercji;
 w – kompilator wypisuje ostrzeżenia;

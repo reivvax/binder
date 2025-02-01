@@ -91,8 +91,8 @@ namespace cxx {
 
             try {
                 auto it = data_ptr->data.begin();           // no-throw gurantee
-                data_ptr->iters[k] = it;                    // strong_gurantee
-                data_ptr->data.front().first = data_ptr->iters.find(k); // no-throw gurantee (BIG_FIX: added)
+                auto [inserted_map_iter, _] = data_ptr->iters.insert({k, it});  // strong_gurantee
+                data_ptr->data.front().first = inserted_map_iter;               // (BIG_FIX: added)
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.pop_front();                 // no-throw gurantee
@@ -112,10 +112,20 @@ namespace cxx {
                 || map_iter == data_ptr->iters.end()) {
                     throw std::invalid_argument("Key already exists");
             }
-
-            auto prev = ensure_unique();
-            map_iter = data_ptr->iters.find(prev_k); // (FIX 103: added)
             auto position = map_iter->second;
+
+            bool was_unique = data_ptr.unique();
+            auto prev = ensure_unique();
+
+            if (!was_unique) {
+                try {
+                    map_iter = data_ptr->iters.find(prev_k); // (FIX 103: added)
+                    position = map_iter->second;
+                } catch (...) {
+                    data_ptr = std::move(prev);
+                    throw;
+                }
+            }
 
             try {
                 ++position;                                 // iterator points to the element after prev_k
@@ -125,10 +135,10 @@ namespace cxx {
                 data_ptr = std::move(prev);
                 throw;
             }
-            
+
             try {
-                data_ptr->iters[k] = position;              // strong guarantee
-                position->first = data_ptr->iters.find(k);  // no-throw (BIG_FIX: added)
+                auto [inserted_map_iter, _] = data_ptr->iters.insert({k, position});   // strong guarantee
+                position->first = inserted_map_iter;        // (BIG_FIX: added)
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);             // no-throw

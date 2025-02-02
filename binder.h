@@ -83,7 +83,7 @@ namespace cxx {
             auto prev = ensure_unique();
 
             try {
-                data_ptr->data.push_front({data_ptr->iters.end(), v});          // strong gurantee to {data_ptr->iters.end(), v})
+                data_ptr->data.push_front({data_ptr->iters.end(), v});          // strong gurantee
             } catch (...) {
                 data_ptr = std::move(prev);
                 throw;

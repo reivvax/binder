@@ -35,7 +35,6 @@ int main() {
 
   bool catched = false;
   try {
-    // Próba użycia istniejącej już zakładki powoduje wyjątek.
     binder1.insert_after("C++ lab1", "C++ lab2", "C++ lab2 notes ver. 2");
     assert(0);
   }
@@ -47,14 +46,11 @@ int main() {
   }
   assert(catched);
 
-  // Należy najpierw usunąć notatkę z tą zakładką.
   binder1.remove("C++ lab2");
   binder1.insert_after("C++ lab1", "C++ lab2", "C++ lab2 notes ver. 2");
 
-  // Używamy read w wersji nie const.
   binder1.read("C++ lab3") += " ver. 2";
 
-  // Wymuszamy użycie read w wersji const.
   string const & str1 = as_const(binder1).read("C++ lab3");
   assert(str1 == "C++ lab3 notes ver. 2");
 
@@ -83,5 +79,5 @@ int main() {
   for (int i = 1; i < 100000; i++)
     int_binder.insert_after(i - 1, i, i);
   for (int i = 0; i < 1000000; i++)
-    vec.push_back(int_binder);  // Wszystkie obiekty w vec współdzielą dane.
+    vec.push_back(int_binder);
 }

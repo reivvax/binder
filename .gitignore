@@ -1,9 +1,7 @@
 .vscode
-src
-tests
-tests2
 *.out
 *tests
 binder_example
-compile_tests.sh
-Makefile
+failed_tests.txt
+binder_simple_tests.cpp
+binder_iterator_tests.cpp

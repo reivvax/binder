@@ -2,4 +2,6 @@
 *.out
 *tests
 binder_example
-src
+failed_tests.txt
+binder_simple_tests.cpp
+binder_iterator_tests.cpp

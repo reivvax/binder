@@ -43,7 +43,7 @@ namespace cxx {
                     new_data_ptr->data.back().first = new_data_ptr->iters.find(item.first->first); // (BIG_FIX: added)
                 }
 
-                std::shared_ptr<Data> res = std::move(data_ptr);
+                std::shared_ptr<Data> res = move(data_ptr);
                 data_ptr = new_data_ptr;
 
                 return res;
@@ -132,7 +132,7 @@ namespace cxx {
                 was_mutable_read = false;
             } catch (...) {
                 data_ptr->data.erase(position);             // no-throw
-                data_ptr = std::move(prev);
+                data_ptr = move(prev);
                 throw;
             }
         }
@@ -211,7 +211,7 @@ namespace cxx {
                     auto it = data_ptr->iters.find(k);
                     return it->second->second;
                 } catch (...) {
-                    data_ptr = std::move(prev);
+                    data_ptr = move(prev);
                     throw;
                 }
             }
